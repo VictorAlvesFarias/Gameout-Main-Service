@@ -1,5 +1,6 @@
 using Application.Attributes.Trace;
 using Application.Dtos.ApplicationLog;
+using Application.Dtos.Pagination;
 using Application.Services.ApplicationLogService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,11 +21,12 @@ namespace ASP.NET_Core_Template.Controllers
             _applicationLogService = applicationLogService;
         }
 
-        [Authorize]
+        // Read by the web and by the driver.
+        [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
         [HttpGet("traces")]
-        public ActionResult<BaseResponse<List<ApplicationLogResponseDto>>> GetAllLogs()
+        public ActionResult<BaseResponse<PagedResponseDto<ApplicationLogResponseDto>>> GetLogs([FromQuery] ApplicationLogFilterDto filter)
         {
-            var result = _applicationLogService.GetAllLogs();
+            var result = _applicationLogService.GetLogs(filter);
             return this.Result(result);
         }
 

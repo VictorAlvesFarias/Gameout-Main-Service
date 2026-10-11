@@ -2,10 +2,10 @@
 using Application.Attributes.Trace;
 using ASP.NET_Core_Template.Extensions;
 using Application.Dtos.AppFile;
+using Application.Dtos.Driver;
 using Application.Services.AppFileService;
 using Application.Services.DownloadSignatureService;
 using Domain.Entitites.ApplicationContextDb;
-using Domain.Queues.AppFileDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Web.Api.Toolkit.Helpers.Api.Extensions;
@@ -30,7 +30,8 @@ namespace ASP.NET_Core_Template.Controllers
             _controller = this;
         }
 
-        [Authorize]
+        // Groups are created on the web or by the driver (when a folder is picked there).
+        [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
         [HttpPost("upload-file")]
         public async Task<ActionResult<BaseResponse<AppFileResponseDto>>> UploadFile([FromBody] AppFileRequestDto request)
         {
@@ -78,19 +79,11 @@ namespace ASP.NET_Core_Template.Controllers
             return this.Result(result);
         }
 
-        [Authorize]
+        [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
         [HttpGet("get-stored-files")]
         public ActionResult<BaseResponse<List<AppStoredFileResponseDto>>> GetStoredFiles(int idAppFile)
         {
             var result = _appFileService.GetAppStoredFiles(idAppFile);
-            return this.Result(result);
-        }
-
-        [Authorize]
-        [HttpPost("single-sync")]
-        public async Task<ActionResult<BaseResponse>> SingleSync([FromBody] AppFileSyncRequestDto req)
-        {
-            var result = await _appFileService.RequestSync(req);
             return this.Result(result);
         }
 
@@ -102,14 +95,6 @@ namespace ASP.NET_Core_Template.Controllers
             return this.Result(result);
         }
 
-        [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
-        [HttpPost("create-app-stored-file")]
-        public async Task<ActionResult<BaseResponse<AppStoredFileCreateResponseDto>>> CreateStoredFile([FromBody] AppStoredFileCreateRequestDto request)
-        {
-            var result = await _appFileService.CreateStoredFile(request);
-            return this.Result(result);
-        }
-
         [HttpGet("download-file-signed")]
         [ValidateDownloadToken]
         public async Task<IActionResult> DownloadFileSigned(string token)
@@ -118,19 +103,12 @@ namespace ASP.NET_Core_Template.Controllers
             return this.FileResult(result, true);
         }
 
-        [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
-        [HttpPost("check-app-file-status")]
-        public async Task<ActionResult<BaseResponse>> CheckAppFileStatus([FromBody] CheckAppFileStatusRequestDto request)
+        // When the driver last called the API (any request made with one of the user's API keys).
+        [Authorize]
+        [HttpGet("driver-status")]
+        public ActionResult<BaseResponse<DriverStatusResponseDto>> DriverStatus()
         {
-            var result = await _appFileService.CheckAppFileStatus(request);
-            return this.Result(result);
-        }
-
-        [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
-        [HttpPost("driver-is-connected")]
-        public async Task<ActionResult<BaseResponse<bool>>> DriverIsConnected()
-        {
-            var result = await _appFileService.DriverIsConnected();
+            var result = _appFileService.GetDriverStatus();
             return this.Result(result);
         }
 

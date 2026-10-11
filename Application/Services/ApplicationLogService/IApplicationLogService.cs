@@ -1,4 +1,5 @@
 using Application.Dtos.ApplicationLog;
+using Application.Dtos.Pagination;
 using Application.Types;
 using Web.Api.Toolkit.Helpers.Application.Dtos;
 
@@ -11,7 +12,7 @@ namespace Application.Services.ApplicationLogService
         Task AddLogAsync(int traceId, string message, ApplicationLogType type, ApplicationLogAction action, string details = "");
         BaseResponse<List<ApplicationLogResponseDto>> GetLogsByTraceId(int traceId);
         BaseResponse<List<TraceResponseDto>> GetAllTraces();
-        BaseResponse<List<ApplicationLogResponseDto>> GetAllLogs();
+        BaseResponse<PagedResponseDto<ApplicationLogResponseDto>> GetLogs(ApplicationLogFilterDto filter);
         Task<BaseResponse<ApplicationLogResponseDto>> AddLog(ApplicationLogRequestDto request);
         Task<BaseResponse> ClearAllLogs();
     }

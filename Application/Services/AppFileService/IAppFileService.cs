@@ -1,7 +1,7 @@
 ﻿using Application.Dtos.AppFile;
+using Application.Dtos.Driver;
 using Application.Types;
 using Domain.Entitites.ApplicationContextDb;
-using Domain.Queues.AppFileDtos;
 using Web.Api.Toolkit.Helpers.Application.Dtos;
 
 namespace Application.Services.AppFileService
@@ -9,7 +9,7 @@ namespace Application.Services.AppFileService
     public interface IAppFileService
     {
         Task<BaseResponse<int>> CreateTraceId();
-        Task<BaseResponse<bool>> DriverIsConnected();
+        BaseResponse<DriverStatusResponseDto> GetDriverStatus();
         BaseResponse<List<AppFileResponseDto>> GetFiles();
         BaseResponse<AppFileResponseDto> GetFileById(int id);
         BaseResponse<List<AppStoredFileResponseDto>> GetAppStoredFiles(int idAppFile);
@@ -17,13 +17,11 @@ namespace Application.Services.AppFileService
         Task<BaseResponse<AppFileResponseDto>> UpdateFile(AppFileRequestDto req, int id);
         Task<BaseResponse<StoredFile>> DownloadFileWithToken(string token);
         Task<BaseResponse<AppStoredFileCreateResponseDto>> CreateStoredFile(AppStoredFileCreateRequestDto req);
-        Task<BaseResponse> RequestSync(AppFileSyncRequestDto req);
+        Task<BaseResponse> CompleteStoredFile(AppStoredFileFinishRequestDto req);
+        Task<BaseResponse> CancelStoredFile(AppStoredFileFinishRequestDto req);
         Task<BaseResponse> DeleteFile(int id);
         Task<BaseResponse> DeleteStoredFile(int id);
-        Task<BaseResponse> SingleSync(AppFileStreamFileRequestDto req);
-        Task<BaseResponse> SetAppFileStatus(int appFileId, AppFileStatusTypes status);
-        Task<BaseResponse> CheckAppFileStatus(CheckAppFileStatusRequestDto request);
-        Task<BaseResponse> HandleDriverEventAsync(DriverEventMessage message);
+        Task<BaseResponse> SetAppFileStatus(int appFileId, AppFileStatusTypes status, string? message = null);
         Task<BaseResponse> DeleteSoftDeletedItems();
     }
 }

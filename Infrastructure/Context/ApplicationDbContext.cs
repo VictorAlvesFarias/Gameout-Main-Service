@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using System.Security.Claims;
 
 namespace Infrastructure.Context
@@ -18,8 +19,8 @@ namespace Infrastructure.Context
         public DbSet<Trace> Trace { get; set; }
         public DbSet<ContextTrace> ContextTrace { get; set; }
 
-        // DateTime columns become "timestamp without time zone" and accept DateTime.Now, as they did
-        // in SQLite. Set here so the app and the dotnet ef tools build the same model.
+        // DateTime columns become "timestamp without time zone", as they were in SQLite. Set here so the
+        // app and the dotnet ef tools build the same model.
         static ApplicationDbContext()
         {
             AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -69,6 +70,10 @@ namespace Infrastructure.Context
                 entity.Property(x => x.StoredFileId)
                       .IsRequired(false);
 
+                entity.Property(x => x.Completed)
+                      .IsRequired()
+                      .HasDefaultValue(false);
+
                 entity.Property(x => x.UpdateDate)
                       .IsRequired();
 
@@ -104,7 +109,7 @@ namespace Infrastructure.Context
                       .HasDefaultValue(true);
 
                 entity.Property(x => x.LastUsed)
-                      .IsRequired();
+                      .IsRequired(false);
 
                 entity.HasIndex(x => x.ApiKey)
                       .IsUnique();
@@ -224,6 +229,23 @@ namespace Infrastructure.Context
                       .HasDefaultValue(false);
 
             });
+
+            // Dates are written in UTC; the column has no zone, so they are read back marked as UTC and
+            // the JSON carries the "Z" (browsers and the driver then show local time correctly).
+            var utc = new ValueConverter<DateTime, DateTime>(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            var nullableUtc = new ValueConverter<DateTime?, DateTime?>(v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+
+            foreach (var property in modelBuilder.Model.GetEntityTypes().SelectMany(e => e.GetProperties()))
+            {
+                if (property.ClrType == typeof(DateTime))
+                {
+                    property.SetValueConverter(utc);
+                }
+                else if (property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(nullableUtc);
+                }
+            }
         }
     }
 }

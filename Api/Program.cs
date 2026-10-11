@@ -1,4 +1,3 @@
-using Application.Workers;
 using ASP.NET_Core_Template.Ioc;
 using ASP.NET_Core_Template.Setups;
 using Infrastructure.Context;
@@ -6,7 +5,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.EntityFrameworkCore;
-using Web.Api.Toolkit.Ws.Application.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -86,16 +84,9 @@ app.UseCors("AllowedCorsOrigins");
 
 app.UseHttpsRedirection();
 
-app.UseWebSockets(new WebSocketOptions
-{
-    KeepAliveInterval = TimeSpan.FromSeconds(30)
-});
-
 app.UseAuthentication();
 
 app.UseAuthorization();
-
-app.UseWebSocketEndpoint<AppFileWorker>();
 
 app.MapControllers();
 

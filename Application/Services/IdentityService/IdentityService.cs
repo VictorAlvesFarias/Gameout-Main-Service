@@ -19,21 +19,18 @@ namespace Application.Services.IdentityService
 {
     public class IdentityService : IIdentityService
     {
-        private readonly ApplicationContext _context;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IOptions<JwtOptions> _jwtOptions;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public IdentityService(
-            ApplicationContext context,
             SignInManager<ApplicationUser> signInManager,
             UserManager<ApplicationUser> userManager,
             IOptions<JwtOptions> jwtOptions,
             IHttpContextAccessor httpContextAccessor
         )
         {
-            _context = context;
             _signInManager = signInManager;
             _userManager = userManager;
             _jwtOptions = jwtOptions;

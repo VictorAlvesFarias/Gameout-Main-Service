@@ -1,17 +1,18 @@
-﻿using Application.Attributes.Trace;
+using Application.Attributes.Trace;
 using Application.Dtos.AppFile;
 using Application.Services.AppFileService;
-using Domain.Queues.AppFileDtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
-using System.Security.Claims;
 using Web.Api.Toolkit.Helpers.Api.Extensions;
 using Web.Api.Toolkit.Helpers.Application.Dtos;
 
-
 namespace ASP.NET_Core_Template.Controllers
 {
+    /// <summary>
+    /// What the driver calls (X-API-Key). Every exchange starts on the driver; the backend never calls it.
+    /// An upload is: create-app-stored-file (presigned MinIO url), PUT the zip to MinIO, then
+    /// complete-app-stored-file, or cancel-app-stored-file when it fails.
+    /// </summary>
     [ApiController]
     public class AppFileDriverController : ControllerBase
     {
@@ -25,19 +26,6 @@ namespace ASP.NET_Core_Template.Controllers
             _appFileService = appFileService;
         }
 
-        // The driver only knows its API key; the user id is the routing key of its command queue.
-        [Authorize(AuthenticationSchemes = "ApiKey")]
-        [HttpGet("driver-identity")]
-        public ActionResult<BaseResponse<string>> DriverIdentity()
-        {
-            var response = new BaseResponse<string>(true)
-            {
-                Data = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            };
-
-            return this.Result(response);
-        }
-
         [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
         [HttpGet("get-trace-id")]
         public async Task<ActionResult<BaseResponse<int>>> GetTraceId()
@@ -46,21 +34,30 @@ namespace ASP.NET_Core_Template.Controllers
             return this.Result(traceId);
         }
 
-        [Traced]
+        [Traced(OnCreate = true)]
         [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
-        [HttpPost("stream-file")]
-        public async Task<ActionResult<BaseResponse>> UploadFile([FromForm] AppFileStreamFileRequestDto req)
+        [HttpPost("create-app-stored-file")]
+        public async Task<ActionResult<BaseResponse<AppStoredFileCreateResponseDto>>> CreateStoredFile([FromBody] AppStoredFileCreateRequestDto request)
         {
-            var result = await _appFileService.SingleSync(req);
+            var result = await _appFileService.CreateStoredFile(request);
             return this.Result(result);
         }
-        
-        [Traced]
+
+        [Traced(OnCreate = true)]
         [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
-        [HttpPost("request-sync")]
-        public async Task<ActionResult<BaseResponse>> RequestSync([FromBody] AppFileSyncRequestDto req)
+        [HttpPost("complete-app-stored-file")]
+        public async Task<ActionResult<BaseResponse>> CompleteStoredFile([FromBody] AppStoredFileFinishRequestDto request)
         {
-            var result = await _appFileService.RequestSync(req);
+            var result = await _appFileService.CompleteStoredFile(request);
+            return this.Result(result);
+        }
+
+        [Traced(OnCreate = true)]
+        [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
+        [HttpPost("cancel-app-stored-file")]
+        public async Task<ActionResult<BaseResponse>> CancelStoredFile([FromBody] AppStoredFileFinishRequestDto request)
+        {
+            var result = await _appFileService.CancelStoredFile(request);
             return this.Result(result);
         }
 
@@ -69,7 +66,7 @@ namespace ASP.NET_Core_Template.Controllers
         [HttpPut("update-appfile-status")]
         public async Task<ActionResult<BaseResponse>> UpdateAppFileStatus([FromBody] UpdateAppFileStatusRequestDto request)
         {
-            var result = await _appFileService.SetAppFileStatus(request.AppFileId, request.Status);
+            var result = await _appFileService.SetAppFileStatus(request.AppFileId, request.Status, request.Message);
             return this.Result(result);
         }
     }

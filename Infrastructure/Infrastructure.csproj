@@ -23,7 +23,6 @@
     <PackageReference Include="Microsoft.Extensions.Features" Version="6.0.36" />
     <PackageReference Include="Web.Api.Toolkit.Entity.Infraestructure" Version="1.0.59" />
     <PackageReference Include="Web.Api.Toolkit.Helpers.Infraestructure" Version="1.0.59" />
-    <PackageReference Include="Web.Api.Toolkit.Queues.Application" Version="1.0.59" />
   </ItemGroup>
 
   <ItemGroup>

@@ -30,9 +30,6 @@ namespace Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("AutoValidateSync")
-                        .HasColumnType("boolean");
-
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("timestamp without time zone");
 
@@ -45,13 +42,6 @@ namespace Infrastructure.Migrations
                         .HasDefaultValue(false);
 
                     b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("Observer")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Path")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -225,6 +215,11 @@ namespace Infrastructure.Migrations
 
                     b.Property<int>("AppFileId")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("Completed")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("timestamp without time zone");
@@ -412,7 +407,7 @@ namespace Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true);
 
-                    b.Property<DateTime>("LastUsed")
+                    b.Property<DateTime?>("LastUsed")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("UpdateDate")

@@ -3,9 +3,7 @@ namespace Application.Dtos.AppFile
     public class AppFileRequestDto
     {
         public string Name { get; set; }
-        public string Path { get; set; }
-        public bool VersionControl { get; set; }
-        public bool Observer { get; set; }
-        public bool AutoValidateSync { get; set; }
+        /// <summary>Keeps every version; off, a confirmed upload replaces the previous one. Null keeps the current value.</summary>
+        public bool? VersionControl { get; set; }
     }
 }

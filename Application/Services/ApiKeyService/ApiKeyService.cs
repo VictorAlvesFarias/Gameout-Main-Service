@@ -50,7 +50,7 @@ namespace Application.Services.ApiKeyService
                 UserId = userId,
                 ApiKey = newApiKey,
                 IsActive = true,
-                LastUsed = DateTime.UtcNow,
+                LastUsed = null,
                 CreateDate = DateTime.UtcNow,
                 UpdateDate = DateTime.UtcNow
             };

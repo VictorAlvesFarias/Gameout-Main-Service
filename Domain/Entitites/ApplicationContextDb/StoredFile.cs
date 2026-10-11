@@ -14,7 +14,7 @@ namespace Domain.Entitites.ApplicationContextDb
             Name = _name ?? Name;
             MimeType = _mimeType ?? MimeType;
             Bytes = _base64 ?? Bytes;
-            UpdateDate = DateTime.Now;
+            UpdateDate = DateTime.UtcNow;
             SizeInBytes = _sizeInBytes > 0 ? _sizeInBytes : SizeInBytes;
         }
     }

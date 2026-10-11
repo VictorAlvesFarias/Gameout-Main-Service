@@ -1,4 +1,5 @@
 using Application.Dtos.ApplicationLog;
+using Application.Dtos.Pagination;
 using Application.Types;
 using Domain.Entitites.ApplicationContextDb;
 using Infrastructure.Context;
@@ -68,8 +69,8 @@ namespace Application.Services.ApplicationLogService
                 Details = string.Empty,
                 Type = ConvertTypeToEnum(type),
                 Action = ConvertActionToEnum(action),
-                CreateDate = DateTime.Now,
-                UpdateDate = DateTime.Now
+                CreateDate = DateTime.UtcNow,
+                UpdateDate = DateTime.UtcNow
             };
 
             await _applicationLogRepository.AddAsync(log);
@@ -84,8 +85,8 @@ namespace Application.Services.ApplicationLogService
                 Details = details ?? string.Empty,
                 Type = (int)type,
                 Action = (int)action,
-                CreateDate = DateTime.Now,
-                UpdateDate = DateTime.Now
+                CreateDate = DateTime.UtcNow,
+                UpdateDate = DateTime.UtcNow
             };
 
             await _applicationLogRepository.AddAsync(log);
@@ -165,10 +166,30 @@ namespace Application.Services.ApplicationLogService
             return response;
         }
 
-        public BaseResponse<List<ApplicationLogResponseDto>> GetAllLogs()
+        public BaseResponse<PagedResponseDto<ApplicationLogResponseDto>> GetLogs(ApplicationLogFilterDto filter)
         {
-            var traces = _applicationLogRepository.Get()
+            var page = filter.Page < 1 ? 1 : filter.Page;
+            var pageSize = filter.PageSize < 1 ? 50 : Math.Min(filter.PageSize, 200);
+            var query = _applicationLogRepository.Get();
+
+            if (!string.IsNullOrWhiteSpace(filter.SearchInput))
+            {
+                var search = filter.SearchInput.Trim().ToLower();
+                var traceId = int.TryParse(search, out var parsedTraceId) ? parsedTraceId : (int?)null;
+
+                query = query.Where(x =>
+                    x.Message.ToLower().Contains(search) ||
+                    x.Details.ToLower().Contains(search) ||
+                    x.TraceId == traceId
+                );
+            }
+
+            var totalCount = query.Count();
+            var logs = query
                 .OrderByDescending(x => x.CreateDate)
+                .ThenByDescending(x => x.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                  .Select(x => new ApplicationLogResponseDto
                  {
                      Id = x.Id,
@@ -183,9 +204,15 @@ namespace Application.Services.ApplicationLogService
                  })
                 .ToList();
 
-            var response = new BaseResponse<List<ApplicationLogResponseDto>>(true)
+            var response = new BaseResponse<PagedResponseDto<ApplicationLogResponseDto>>(true)
             {
-                Data = traces
+                Data = new PagedResponseDto<ApplicationLogResponseDto>
+                {
+                    Items = logs,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount
+                }
             };
 
             return response;
@@ -202,8 +229,8 @@ namespace Application.Services.ApplicationLogService
                 Details = request.Details ?? string.Empty,
                 Type = (int)request.Type,
                 Action = (int)request.Action,
-                CreateDate = DateTime.Now,
-                UpdateDate = DateTime.Now
+                CreateDate = DateTime.UtcNow,
+                UpdateDate = DateTime.UtcNow
             };
 
             var result = await _applicationLogRepository.AddAsync(log);
