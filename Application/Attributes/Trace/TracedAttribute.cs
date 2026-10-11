@@ -14,7 +14,7 @@ namespace Application.Attributes.Trace
         public override void OnActionExecuting(ActionExecutingContext context)
         {
             var traceValue = string.Empty;
-            var response = new DefaultResponse();
+            var response = new BaseResponse();
 
             if (context.HttpContext.Request.Headers.TryGetValue(HEADER_NAME, out var value))
             {

@@ -7,12 +7,12 @@ namespace Application.Services.Identity
     public interface IIdentityService
     {
         Task<BaseResponse<LoginUserResponse>> LoginAsync(LoginUserRequest loginData);
-        Task<DefaultResponse> AddUser(CreateUserRequest userData);
-        Task<DefaultResponse> DeleteSignedUser(LoginUserRequest email);
-        Task<DefaultResponse> PutUser(PutUserRequest userData);
-        Task<DefaultResponse> ValidateUsernameAsync(string email);
-        Task<DefaultResponse> ValidateEmailAsync(string email);
+        Task<BaseResponse> AddUser(CreateUserRequest userData);
+        Task<BaseResponse> DeleteSignedUser(LoginUserRequest email);
+        Task<BaseResponse> PutUser(PutUserRequest userData);
+        Task<BaseResponse> ValidateUsernameAsync(string email);
+        Task<BaseResponse> ValidateEmailAsync(string email);
         Task<BaseResponse<GetUserResponseDto>> GetCurrentUserAsync();
-        Task<DefaultResponse> ChangePasswordAsync(ChangePasswordRequest changePasswordData);
+        Task<BaseResponse> ChangePasswordAsync(ChangePasswordRequest changePasswordData);
     }
 }

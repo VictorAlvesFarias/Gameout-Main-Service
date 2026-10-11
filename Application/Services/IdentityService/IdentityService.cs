@@ -40,9 +40,9 @@ namespace Application.Services.IdentityService
             _httpContextAccessor = httpContextAccessor;
         }
 
-        public async Task<DefaultResponse> PutUser(PutUserRequest userData)
+        public async Task<BaseResponse> PutUser(PutUserRequest userData)
         {
-            var response = new DefaultResponse();
+            var response = new BaseResponse();
 
             if (!_httpContextAccessor.HttpContext.Request.Cookies.TryGetValue("id", out var userId))
             {
@@ -80,9 +80,9 @@ namespace Application.Services.IdentityService
             return response;
         }
 
-        public async Task<DefaultResponse> AddUser(CreateUserRequest userData)
+        public async Task<BaseResponse> AddUser(CreateUserRequest userData)
         {
-            var response = new DefaultResponse();
+            var response = new BaseResponse();
 
             var validateEmail = await ValidateEmailAsync(userData.Email);
             if (!validateEmail.Success)
@@ -147,9 +147,9 @@ namespace Application.Services.IdentityService
             return response;
         }
 
-        public async Task<DefaultResponse> DeleteSignedUser(LoginUserRequest loginData)
+        public async Task<BaseResponse> DeleteSignedUser(LoginUserRequest loginData)
         {
-            var response = new DefaultResponse();
+            var response = new BaseResponse();
 
             var userId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -185,10 +185,10 @@ namespace Application.Services.IdentityService
             return response;
         }
 
-        public async Task<DefaultResponse> ValidateUsernameAsync(string username)
+        public async Task<BaseResponse> ValidateUsernameAsync(string username)
         {
             var user = await _userManager.FindByNameAsync(username);
-            var response = new DefaultResponse(user == null);
+            var response = new BaseResponse(user == null);
 
             if (!response.Success)
             {
@@ -198,10 +198,10 @@ namespace Application.Services.IdentityService
             return response;
         }
 
-        public async Task<DefaultResponse> ValidateEmailAsync(string email)
+        public async Task<BaseResponse> ValidateEmailAsync(string email)
         {
             var user = await _userManager.FindByEmailAsync(email);
-            var response = new DefaultResponse(user == null);
+            var response = new BaseResponse(user == null);
 
             if (!response.Success)
             { 
@@ -211,9 +211,9 @@ namespace Application.Services.IdentityService
             return response;
         }
 
-        public async Task<DefaultResponse> ChangePasswordAsync(ChangePasswordRequest changePasswordData)
+        public async Task<BaseResponse> ChangePasswordAsync(ChangePasswordRequest changePasswordData)
         {
-            var response = new DefaultResponse();
+            var response = new BaseResponse();
 
             if (!_httpContextAccessor.HttpContext.Request.Cookies.TryGetValue("id", out var userId))
             {

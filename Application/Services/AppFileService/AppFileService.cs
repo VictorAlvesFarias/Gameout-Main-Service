@@ -1,6 +1,9 @@
 using Application.Dtos.AppFile;
+using Application.Configuration;
 using Application.Extensions;
 using Application.Services.ApplicationLogService;
+using Application.Services.MessagingService;
+using Application.Services.StorageService;
 using Application.Types;
 using Application.Workers;
 using Domain.Entitites.ApplicationContextDb;
@@ -10,6 +13,7 @@ using Infrastructure.Mediators;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using Web.Api.Toolkit.Entity.Infraestructure.Repositories;
 using Web.Api.Toolkit.Helpers.Application.Dtos;
@@ -24,6 +28,9 @@ namespace Application.Services.AppFileService
         private readonly IBaseRepository<StoredFile> _storedFileRepository;
         private readonly ApplicationContext _applicationContext;
         private readonly AppFileWorker _webSocketWorker;
+        private readonly IRabbitMqMessagePublisher _messagePublisher;
+        private readonly IMinioStorageService _minioStorageService;
+        private readonly RabbitMqOptions _rabbitMqOptions;
         private readonly IApplicationLogService _applicationLogService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
@@ -33,6 +40,9 @@ namespace Application.Services.AppFileService
             IBaseRepository<AppStoredFile> appStoredFileRepository,
             ApplicationContext applicationContext,
             AppFileWorker webSocketWorker,
+            IRabbitMqMessagePublisher messagePublisher,
+            IMinioStorageService minioStorageService,
+            IOptions<RabbitMqOptions> rabbitMqOptions,
             IApplicationLogService applicationLogService,
             IHttpContextAccessor httpContextAccessor
         )
@@ -42,6 +52,9 @@ namespace Application.Services.AppFileService
             _appStoredFileRepository = appStoredFileRepository;
             _applicationContext = applicationContext;
             _webSocketWorker = webSocketWorker;
+            _messagePublisher = messagePublisher;
+            _minioStorageService = minioStorageService;
+            _rabbitMqOptions = rabbitMqOptions.Value;
             _applicationLogService = applicationLogService;
             _httpContextAccessor = httpContextAccessor;
         }
@@ -238,29 +251,18 @@ namespace Application.Services.AppFileService
 
             await _applicationLogService.AddLogAsync(traceId, "File updated successfully", ApplicationLogType.Message, ApplicationLogAction.Success);
 
-            var clientDriver = _webSocketWorker.GetDriveClient(appFile.UserId);
-
-            if (clientDriver is not null)
-            {
-                var headers = new Dictionary<string, string>();
-
-                headers.Add("X-Trace-Application-Id", traceId.ToString());
-
-                _webSocketWorker.SendAsync(clientDriver.Id, new WebSocketRequest()
+            await _messagePublisher.PublishAsync(
+                _rabbitMqOptions.CommandExchangeName,
+                appFile.UserId,
+                new DriverCommandMessage
                 {
-                    Event = "SetEvents",
-                    Body = "",
-                    Headers = headers
-                });
-            }
-            else
-            {
-                response.Errors.Add(new ErrorMessage("Failed to request synchronization. The driver is not connected."));
-               
-                await _applicationLogService.AddLogAsync(traceId, "Sync request failed because driver is not connected", ApplicationLogType.Message, ApplicationLogAction.Error);
-
-                return response;
-            }
+                    Command = DriverCommandTypes.RefreshWatchers,
+                    AppFileId = appFile.Id,
+                    UserId = appFile.UserId,
+                    Path = appFile.Path,
+                    TraceId = traceId.ToString()
+                }
+            );
 
             response.Data = new AppFileResponseDto
             {
@@ -305,11 +307,11 @@ namespace Application.Services.AppFileService
             return response;
         }
 
-        public async Task<DefaultResponse> RequestSync(AppFileSyncRequestDto req)
+        public async Task<BaseResponse> RequestSync(AppFileSyncRequestDto req)
         {
             var traceId = await _applicationLogService.GetTraceId();
             var appFile = _appFileRepository.Get().FirstOrDefault(e => e.Id == req.IdAppFile);
-            var response = new DefaultResponse(appFile != null);
+            var response = new BaseResponse(appFile != null);
 
             if (!response.Success)
             {
@@ -333,30 +335,23 @@ namespace Application.Services.AppFileService
             appFile.Update(status: (int)AppFileStatusTypes.Processing, statusMessage: AppFileStatusTypes.Processing.GetDescription(), statusDetails: ((int)AppFileStatusTypes.Processing).ToString());
             _appFileRepository.Update(appFile);
 
-            var clientDriver = _webSocketWorker.GetDriveClient(appFile.UserId);
-
-            if (clientDriver is not null)
-            {
-                var headers = new Dictionary<string, string>();
-                headers.Add("X-Trace-Application-Id", traceId.ToString());
-
-                _webSocketWorker.SendAsync(clientDriver.Id, new WebSocketRequest()
+            await _messagePublisher.PublishAsync(
+                _rabbitMqOptions.CommandExchangeName,
+                appFile.UserId,
+                new DriverCommandMessage
                 {
-                    Event = "SingleSync",
-                    Body = new AppFileUpdateRequestMessage()
+                    Command = DriverCommandTypes.StartBackup,
+                    AppFileId = appFile.Id,
+                    UserId = appFile.UserId,
+                    Path = appFile.Path,
+                    TraceId = traceId.ToString(),
+                    PayloadJson = System.Text.Json.JsonSerializer.Serialize(new AppFileUpdateRequestMessage
                     {
                         AppFileId = appFile.Id,
-                        Path = appFile.Path,
-                    },
-                    Headers = headers
-                });
-            }
-            else
-            {
-                response.Errors.Add(new ErrorMessage("Failed to request synchronization. The driver is not connected."));
-                await _applicationLogService.AddLogAsync(traceId, "Sync request failed because driver is not connected", ApplicationLogType.Message, ApplicationLogAction.Error);
-                return response;
-            }
+                        Path = appFile.Path
+                    })
+                }
+            );
 
             var client = _webSocketWorker.GetWebClient(appFile.UserId);
 
@@ -374,10 +369,10 @@ namespace Application.Services.AppFileService
             return response;
         }
 
-        public async Task<DefaultResponse> SingleSync(AppFileStreamFileRequestDto req)
+        public async Task<BaseResponse> SingleSync(AppFileStreamFileRequestDto req)
         {
             var traceId = await _applicationLogService.GetTraceId();
-            var response = new DefaultResponse();
+            var response = new BaseResponse();
             var appFile = _appFileRepository.Get().FirstOrDefault(e => e.Id == req.AppFileId);
 
             if (appFile is null)
@@ -494,14 +489,14 @@ namespace Application.Services.AppFileService
             return response;
         }
 
-        public async Task<DefaultResponse> DeleteFile(int id)
+        public async Task<BaseResponse> DeleteFile(int id)
         {
             var traceId = await _applicationLogService.GetTraceId();
             var appFile = _appFileRepository.Get().FirstOrDefault(e => e.Id == id);
             var appStoredFiles = _appStoredFileRepository.Get().Where(e => e.AppFileId == id);
             var appStoredFilesId = appStoredFiles.Select(e=>e.StoredFileId).ToList();
             var storedFiles = _storedFileRepository.Get().Where(e => appStoredFilesId.Contains(e.Id));
-            var response = new DefaultResponse(appFile is not null);
+            var response = new BaseResponse(appFile is not null);
 
             foreach (var item in storedFiles)
             {
@@ -544,12 +539,12 @@ namespace Application.Services.AppFileService
             return response;
         }
 
-        public async Task<DefaultResponse> DeleteStoredFile(int id)
+        public async Task<BaseResponse> DeleteStoredFile(int id)
         {
             var traceId = await _applicationLogService.GetTraceId();
             var appStoredFile = _appStoredFileRepository.Get().FirstOrDefault(e => e.Id == id);
             var storedFile = _storedFileRepository.Get().FirstOrDefault(e => e.Id == appStoredFile.StoredFileId);
-            var response = new DefaultResponse(appStoredFile is not null);
+            var response = new BaseResponse(appStoredFile is not null);
 
             if (!response.Success)
             {
@@ -598,14 +593,14 @@ namespace Application.Services.AppFileService
             return response;
         }
 
-        public async Task<DefaultResponse> SetAppFileStatus(int appFileId, AppFileStatusTypes status)
+        public async Task<BaseResponse> SetAppFileStatus(int appFileId, AppFileStatusTypes status)
         {
             var traceId = await _applicationLogService.GetTraceId();
             
             await _applicationLogService.AddLogAsync(traceId, $"Watcher event received for AppFile status update to {status}", ApplicationLogType.Message, ApplicationLogAction.Info, $"Entity: AppFile, ID: {appFileId}, Target Status: {status}");
             
             var appFile = _appFileRepository.Get().FirstOrDefault(e => e.Id == appFileId);
-            var response = new DefaultResponse(appFile != null);
+            var response = new BaseResponse(appFile != null);
 
             if (!response.Success)
             {
@@ -649,10 +644,101 @@ namespace Application.Services.AppFileService
             return response;
         }
 
-        public async Task<DefaultResponse> CheckAppFileStatus(CheckAppFileStatusRequestDto request)
+        public async Task<BaseResponse<AppStoredFileCreateResponseDto>> CreateStoredFile(AppStoredFileCreateRequestDto req)
         {
             var traceId = await _applicationLogService.GetTraceId();
-            var response = new DefaultResponse(true);
+            var response = new BaseResponse<AppStoredFileCreateResponseDto>(true);
+
+            var appFile = _appFileRepository.Get().FirstOrDefault(e => e.Id == req.AppFileId);
+            if (appFile == null)
+            {
+                response.AddError(new ErrorMessage("Failed to create stored file. The app file was not found."));
+                return response;
+            }
+
+            var storedFile = await _storedFileRepository.AddAsync(new StoredFile
+            {
+                Name = $"{appFile.Name}.zip",
+                MimeType = "application/zip",
+                Bytes = Array.Empty<byte>(),
+                SizeInBytes = req.OriginalFileSize
+            });
+
+            if (storedFile == null)
+            {
+                response.AddError(new ErrorMessage("Failed to create stored file metadata."));
+                return response;
+            }
+
+            var appStoredFile = await _appStoredFileRepository.AddAsync(new AppStoredFile
+            {
+                AppFileId = req.AppFileId,
+                StoredFileId = storedFile.Id
+            });
+
+            if (appStoredFile == null)
+            {
+                response.AddError(new ErrorMessage("Failed to create app stored file metadata."));
+                return response;
+            }
+
+            var uploadUrlResult = await _minioStorageService.GenerateUploadUrlAsync(storedFile.Id);
+            if (!uploadUrlResult.Success)
+            {
+                response.Errors.AddRange(uploadUrlResult.Errors);
+                return response;
+            }
+
+            response.Data = new AppStoredFileCreateResponseDto
+            {
+                AppStoredFileId = appStoredFile.Id,
+                DiskFileId = storedFile.Id,
+                Status = 200,
+                UploadUrl = uploadUrlResult.Data
+            };
+
+            await _applicationLogService.AddLogAsync(traceId, "Stored file metadata created successfully", ApplicationLogType.Message, ApplicationLogAction.Success, $"AppFileId: {req.AppFileId}, StoredFileId: {storedFile.Id}, AppStoredFileId: {appStoredFile.Id}");
+
+            return response;
+        }
+
+        public async Task<BaseResponse> HandleDriverEventAsync(DriverEventMessage message)
+        {
+            var traceId = await _applicationLogService.GetTraceId();
+            var response = new BaseResponse(true);
+
+            if (message == null)
+            {
+                response.AddError(new ErrorMessage("Driver event is required."));
+                return response;
+            }
+
+            // The driver reports folder states (Synced, PathNotFounded, LockedFiles...) in Status; other
+            // values (Complete, Error) are upload states, so those fall back to the event type.
+            var status = Enum.TryParse<AppFileStatusTypes>(message.Status, ignoreCase: true, out var reported) && Enum.IsDefined(reported)
+                ? reported
+                : message.Event switch
+                {
+                    DriverEventTypes.Completed => AppFileStatusTypes.Synced,
+                    DriverEventTypes.Error => AppFileStatusTypes.Unsynced,
+                    DriverEventTypes.Progress => AppFileStatusTypes.Processing,
+                    _ => AppFileStatusTypes.Processing
+                };
+
+            if (message.AppFileId > 0)
+            {
+                await SetAppFileStatus(message.AppFileId, status);
+            }
+
+            await _applicationLogService.AddLogAsync(traceId, $"Driver event handled: {message.Event}", ApplicationLogType.Message, ApplicationLogAction.Info, message.Details ?? message.Message ?? string.Empty);
+
+            return response;
+        }
+
+        public async Task<BaseResponse> CheckAppFileStatus(CheckAppFileStatusRequestDto request)
+        {
+            var traceId = await _applicationLogService.GetTraceId();
+            var response = new BaseResponse(true);
             var appFile = _appFileRepository.Get().FirstOrDefault(e => e.Id == request.AppFileId);
 
             if (appFile == null)
@@ -671,33 +757,27 @@ namespace Application.Services.AppFileService
                 .OrderByDescending(e => e.CreateDate)
                 .FirstOrDefault();
 
-            var clientDriver = _webSocketWorker.GetDriveClient(appFile.UserId);
-
-            if (clientDriver is not null)
-            {
-                var headers = new Dictionary<string, string>();
-                headers.Add("X-Trace-Application-Id", traceId.ToString());
-
-                _webSocketWorker.SendAsync(clientDriver.Id, new WebSocketRequest()
+            await _messagePublisher.PublishAsync(
+                _rabbitMqOptions.CommandExchangeName,
+                appFile.UserId,
+                new DriverCommandMessage
                 {
-                    Event = "CheckAppFileStatusAll",
-                    Headers = headers,
-                    Body = new AppFileStatusCheckAllRequestMessage()
+                    Command = DriverCommandTypes.ScanDirectories,
+                    AppFileId = appFile.Id,
+                    UserId = appFile.UserId,
+                    Path = appFile.Path,
+                    TraceId = traceId.ToString(),
+                    PayloadJson = System.Text.Json.JsonSerializer.Serialize(new AppFileStatusCheckAllRequestMessage()
                     {
                         AppFileId = request.AppFileId,
                         Path = appFile.Path,
                         LastSyncedFileSize = lastSyncedFile?.StoredFile?.SizeInBytes,
                         LastSyncedFileDate = lastSyncedFile?.CreateDate
-                    }
-                });
+                    })
+                }
+            );
 
-                await _applicationLogService.AddLogAsync(traceId, "Status check request sent to driver for AppFile successfully", ApplicationLogType.Message, ApplicationLogAction.Success, $"Entity: AppFile, ID: {request.AppFileId}, Path: {appFile.Path}, LastSyncedFileSize: {lastSyncedFile?.StoredFile?.SizeInBytes}, LastSyncedDate: {lastSyncedFile?.CreateDate}");
-            }
-            else
-            {
-                response.AddError(new ErrorMessage("Driver is not connected."));
-                await _applicationLogService.AddLogAsync(traceId, "Status check failed because driver is not connected", ApplicationLogType.Message, ApplicationLogAction.Error, $"Entity: AppFile, ID: {request.AppFileId}, Path: {appFile.Path}");
-            }
+            await _applicationLogService.AddLogAsync(traceId, "Status check request sent to driver for AppFile successfully", ApplicationLogType.Message, ApplicationLogAction.Success, $"Entity: AppFile, ID: {request.AppFileId}, Path: {appFile.Path}, LastSyncedFileSize: {lastSyncedFile?.StoredFile?.SizeInBytes}, LastSyncedDate: {lastSyncedFile?.CreateDate}");
 
             return response;
         }
@@ -717,10 +797,10 @@ namespace Application.Services.AppFileService
             return response;
         }
 
-        public async Task<DefaultResponse> DeleteSoftDeletedItems()
+        public async Task<BaseResponse> DeleteSoftDeletedItems()
         {
             var traceId = await _applicationLogService.GetTraceId();
-            var response = new DefaultResponse(true);
+            var response = new BaseResponse(true);
 
             try
             {

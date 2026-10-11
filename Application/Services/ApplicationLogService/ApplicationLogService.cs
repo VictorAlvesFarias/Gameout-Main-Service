@@ -229,9 +229,9 @@ namespace Application.Services.ApplicationLogService
             return response;
         }
 
-        public async Task<DefaultResponse> ClearAllLogs()
+        public async Task<BaseResponse> ClearAllLogs()
         {
-            var response = new DefaultResponse(true);
+            var response = new BaseResponse(true);
 
             try
             {

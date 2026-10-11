@@ -15,10 +15,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="6.0.36" />
+    <PackageReference Include="RabbitMQ.Client" Version="6.8.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
-    <PackageReference Include="Web.Api.Toolkit.Helpers.Api" Version="1.0.50" />
-    <PackageReference Include="Web.Api.Toolkit.Identity.Application" Version="1.0.50" />
+    <PackageReference Include="Web.Api.Toolkit.Helpers.Api" Version="1.0.59" />
+    <PackageReference Include="Web.Api.Toolkit.Identity.Application" Version="1.0.59" />
   </ItemGroup>
 
   <ItemGroup>

@@ -49,7 +49,7 @@ if (builder.Configuration.GetValue<bool>("Swagger:Enabled", false))
 builder.Services.RegisterServices(builder.Configuration);
 
 builder.Services.AddDbContext<ApplicationDbContext>(opt =>
-    opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
 builder.Services.AddIdentityAuthentication(builder.Configuration);
@@ -69,6 +69,11 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
+}
 
 if (builder.Configuration.GetValue<bool>("Swagger:Enabled", false))
 {

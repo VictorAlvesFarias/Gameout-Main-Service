@@ -39,10 +39,10 @@ namespace ASP.NET_Core_Template.Controllers
 
         [Authorize]
         [HttpDelete("clear")]
-        public async Task<ActionResult<DefaultResponse>> ClearAllLogs()
+        public async Task<ActionResult<BaseResponse>> ClearAllLogs()
         {
             var result = await _applicationLogService.ClearAllLogs();
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
     }
 }

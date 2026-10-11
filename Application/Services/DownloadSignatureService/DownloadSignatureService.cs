@@ -1,10 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Application.Configuration;
+using Application.Services.StorageService;
+using Domain.Entitites.ApplicationContextDb;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Web.Api.Toolkit.Entity.Infraestructure.Repositories;
 using Web.Api.Toolkit.Helpers.Application.Dtos;
 using Web.Api.Toolkit.Identity.Application.Configuration;
 
@@ -13,18 +15,21 @@ namespace Application.Services.DownloadSignatureService
     public class DownloadSignatureService : IDownloadSignatureService
     {
         private readonly JwtOptions _jwtOptions;
-        private readonly DownloadOptions _downloadOptions;
+        private readonly IBaseRepository<AppStoredFile> _appStoredFileRepository;
+        private readonly IMinioStorageService _minioStorageService;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public DownloadSignatureService
         (
             IOptions<JwtOptions> jwtOptions,
-            IOptions<DownloadOptions> downloadOptions,
+            IBaseRepository<AppStoredFile> appStoredFileRepository,
+            IMinioStorageService minioStorageService,
             IHttpContextAccessor httpContextAccessor
         )
         {
             _jwtOptions = jwtOptions.Value ?? throw new ArgumentNullException(nameof(jwtOptions));
-            _downloadOptions = downloadOptions.Value ?? throw new ArgumentNullException(nameof(downloadOptions));
+            _appStoredFileRepository = appStoredFileRepository;
+            _minioStorageService = minioStorageService;
             _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
 
             if (string.IsNullOrEmpty(_jwtOptions.SecurityKey))
@@ -54,30 +59,23 @@ namespace Application.Services.DownloadSignatureService
                 return response;
             }
 
-            var baseUrl = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}";
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_jwtOptions.SecurityKey);
-            var tokenDescriptor = new SecurityTokenDescriptor
+            var appStoredFile = _appStoredFileRepository.Get().FirstOrDefault(e => e.Id == fileId);
+
+            if (appStoredFile == null || appStoredFile.StoredFileId == null)
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim("fileId", fileId.ToString()),
-                    new Claim(ClaimTypes.NameIdentifier, userId),
-                    new Claim("purpose", "download")
-                }),
-                Expires = DateTime.UtcNow.AddMinutes(_downloadOptions.ExpirationMinutes),
-                SigningCredentials = new SigningCredentials(
-                    new SymmetricSecurityKey(key),
-                    SecurityAlgorithms.HmacSha256Signature
-                ),
-                Issuer = _jwtOptions.Issuer,
-                Audience = _jwtOptions.Audience
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(token);
-            var signedUrl = $"{baseUrl}/download-file-signed?token={Uri.EscapeDataString(tokenString)}";
-                
-            response.Data = signedUrl;
+                response.AddError(new ErrorMessage("File not found", 404));
+                return response;
+            }
+
+            var downloadUrl = _minioStorageService.GenerateDownloadUrlAsync(appStoredFile.StoredFileId.Value).GetAwaiter().GetResult();
+
+            if (!downloadUrl.Success)
+            {
+                response.AddError(new ErrorMessage("Failed to generate download url"));
+                return response;
+            }
+
+            response.Data = downloadUrl.Data;
     
             return response;
         }

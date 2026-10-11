@@ -1,5 +1,6 @@
 ﻿using Application.Attributes.DownloadAuth;
 using Application.Attributes.Trace;
+using ASP.NET_Core_Template.Extensions;
 using Application.Dtos.AppFile;
 using Application.Services.AppFileService;
 using Application.Services.DownloadSignatureService;
@@ -47,18 +48,18 @@ namespace ASP.NET_Core_Template.Controllers
 
         [Authorize]
         [HttpDelete("delete-file")]
-        public async Task<ActionResult<DefaultResponse>> DeleteFile(int id)
+        public async Task<ActionResult<BaseResponse>> DeleteFile(int id)
         {
             var result = await _appFileService.DeleteFile(id);
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [Authorize]
         [HttpDelete("delete-stored-file")]
-        public async Task<ActionResult<DefaultResponse>> DeleteStoredFile(int id)
+        public async Task<ActionResult<BaseResponse>> DeleteStoredFile(int id)
         {
             var result = await _appFileService.DeleteStoredFile(id);
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
@@ -87,10 +88,10 @@ namespace ASP.NET_Core_Template.Controllers
 
         [Authorize]
         [HttpPost("single-sync")]
-        public async Task<ActionResult<DefaultResponse>> SingleSync([FromBody] AppFileSyncRequestDto req)
+        public async Task<ActionResult<BaseResponse>> SingleSync([FromBody] AppFileSyncRequestDto req)
         {
             var result = await _appFileService.RequestSync(req);
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [Authorize]
@@ -98,6 +99,14 @@ namespace ASP.NET_Core_Template.Controllers
         public ActionResult<BaseResponse<string>> GenerateDownloadUrl(int id)
         {
             var result = _downloadSignatureService.GenerateSignedDownloadUrl(id);
+            return this.Result(result);
+        }
+
+        [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
+        [HttpPost("create-app-stored-file")]
+        public async Task<ActionResult<BaseResponse<AppStoredFileCreateResponseDto>>> CreateStoredFile([FromBody] AppStoredFileCreateRequestDto request)
+        {
+            var result = await _appFileService.CreateStoredFile(request);
             return this.Result(result);
         }
 
@@ -111,10 +120,10 @@ namespace ASP.NET_Core_Template.Controllers
 
         [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
         [HttpPost("check-app-file-status")]
-        public async Task<ActionResult<DefaultResponse>> CheckAppFileStatus([FromBody] CheckAppFileStatusRequestDto request)
+        public async Task<ActionResult<BaseResponse>> CheckAppFileStatus([FromBody] CheckAppFileStatusRequestDto request)
         {
             var result = await _appFileService.CheckAppFileStatus(request);
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [Authorize(AuthenticationSchemes = "Bearer,ApiKey")]
@@ -127,10 +136,10 @@ namespace ASP.NET_Core_Template.Controllers
 
         [Authorize]
         [HttpDelete("delete-soft-deleted-items")]
-        public async Task<ActionResult<DefaultResponse>> DeleteSoftDeletedItems()
+        public async Task<ActionResult<BaseResponse>> DeleteSoftDeletedItems()
         {
             var result = await _appFileService.DeleteSoftDeletedItems();
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
     }
 }

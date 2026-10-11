@@ -20,11 +20,11 @@ namespace ASP.NET_Core_Template.Controllers
 
         [AllowAnonymous]
         [HttpPost("/create-user")]
-        public async Task<ActionResult<DefaultResponse>> CreateUser([FromBody] CreateUserRequest userData)
+        public async Task<ActionResult<BaseResponse>> CreateUser([FromBody] CreateUserRequest userData)
         {
             var result = await _identityService.AddUser(userData);
 
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [HttpPost("/sign-in")]
@@ -37,11 +37,11 @@ namespace ASP.NET_Core_Template.Controllers
 
         [Authorize]
         [HttpDelete("/delete-account")]
-        public async Task<ActionResult<DefaultResponse>> DeleteUser([FromBody] LoginUserRequest loginData)
+        public async Task<ActionResult<BaseResponse>> DeleteUser([FromBody] LoginUserRequest loginData)
         {
             var result = await _identityService.DeleteSignedUser(loginData);
 
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [Authorize]
@@ -55,38 +55,38 @@ namespace ASP.NET_Core_Template.Controllers
 
         [Authorize]
         [HttpPut("/update-account")]
-        public async Task<ActionResult<DefaultResponse>> UpdateUser([FromBody] PutUserRequest userData)
+        public async Task<ActionResult<BaseResponse>> UpdateUser([FromBody] PutUserRequest userData)
         {
             var result = await _identityService.PutUser(userData);
 
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [Authorize]
         [HttpPost("/validade-email")]
-        public async Task<ActionResult<DefaultResponse>> ValidateEmail([FromBody] ValidateEmailRequest validate)
+        public async Task<ActionResult<BaseResponse>> ValidateEmail([FromBody] ValidateEmailRequest validate)
         {
             var result = await _identityService.ValidateEmailAsync(validate.Email);
 
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [Authorize]
         [HttpPost("/validate-username")]
-        public async Task<ActionResult<DefaultResponse>> ValidateUsername([FromBody] ValidateUsernameRequest validate)
+        public async Task<ActionResult<BaseResponse>> ValidateUsername([FromBody] ValidateUsernameRequest validate)
         {
             var result = await _identityService.ValidateUsernameAsync(validate.Username);
 
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
 
         [Authorize]
         [HttpPost("/change-password")]
-        public async Task<ActionResult<DefaultResponse>> ChangePassword([FromBody] ChangePasswordRequest changePasswordData)
+        public async Task<ActionResult<BaseResponse>> ChangePassword([FromBody] ChangePasswordRequest changePasswordData)
         {
             var result = await _identityService.ChangePasswordAsync(changePasswordData);
 
-            return this.DefaultResult(result);
+            return this.Result(result);
         }
     }
 }

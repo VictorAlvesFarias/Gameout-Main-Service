@@ -13,7 +13,7 @@ namespace Application.Services.ApplicationLogService
         BaseResponse<List<TraceResponseDto>> GetAllTraces();
         BaseResponse<List<ApplicationLogResponseDto>> GetAllLogs();
         Task<BaseResponse<ApplicationLogResponseDto>> AddLog(ApplicationLogRequestDto request);
-        Task<DefaultResponse> ClearAllLogs();
+        Task<BaseResponse> ClearAllLogs();
     }
 }
 

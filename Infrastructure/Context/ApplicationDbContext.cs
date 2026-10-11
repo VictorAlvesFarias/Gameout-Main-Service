@@ -18,6 +18,13 @@ namespace Infrastructure.Context
         public DbSet<Trace> Trace { get; set; }
         public DbSet<ContextTrace> ContextTrace { get; set; }
 
+        // DateTime columns become "timestamp without time zone" and accept DateTime.Now, as they did
+        // in SQLite. Set here so the app and the dotnet ef tools build the same model.
+        static ApplicationDbContext()
+        {
+            AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+        }
+
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IHttpContextAccessor contextAccessor) : base(options)
         {
             _contextAccessor = contextAccessor;

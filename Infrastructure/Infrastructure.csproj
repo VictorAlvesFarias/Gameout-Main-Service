@@ -15,14 +15,15 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.31" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="6.0.29" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="6.0.36">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Features" Version="6.0.36" />
-    <PackageReference Include="Web.Api.Toolkit.Entity.Infraestructure" Version="1.0.50" />
-    <PackageReference Include="Web.Api.Toolkit.Helpers.Infraestructure" Version="1.0.50" />
-    <PackageReference Include="Web.Api.Toolkit.Queues.Application" Version="1.0.50" />
+    <PackageReference Include="Web.Api.Toolkit.Entity.Infraestructure" Version="1.0.59" />
+    <PackageReference Include="Web.Api.Toolkit.Helpers.Infraestructure" Version="1.0.59" />
+    <PackageReference Include="Web.Api.Toolkit.Queues.Application" Version="1.0.59" />
   </ItemGroup>
 
   <ItemGroup>

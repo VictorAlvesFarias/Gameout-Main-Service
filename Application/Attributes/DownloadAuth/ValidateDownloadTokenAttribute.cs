@@ -15,7 +15,7 @@ namespace Application.Attributes.DownloadAuth
             
             if (service == null)
             {
-                var response = new DefaultResponse();
+                var response = new BaseResponse();
                 
                 response.AddError(new ErrorMessage("Download signature service not available", 500));
 
@@ -26,7 +26,7 @@ namespace Application.Attributes.DownloadAuth
 
             if (!context.HttpContext.Request.Query.TryGetValue("token", out var tokenValue) || string.IsNullOrEmpty(tokenValue))
             {
-                var response = new DefaultResponse();
+                var response = new BaseResponse();
 
                 response.AddError(new ErrorMessage("Download token is required", 401));
                 
@@ -40,7 +40,7 @@ namespace Application.Attributes.DownloadAuth
             
             if (!validationResult.Success || validationResult.Data == null)
             {
-                var response = new DefaultResponse();
+                var response = new BaseResponse();
                 
                 foreach (var error in validationResult.Errors)
                 {
@@ -58,7 +58,7 @@ namespace Application.Attributes.DownloadAuth
 
             if (string.IsNullOrEmpty(userId))
             {
-                var response = new DefaultResponse();
+                var response = new BaseResponse();
                 
                 response.AddError(new ErrorMessage("User ID not found in token", 401));
                 
@@ -69,7 +69,7 @@ namespace Application.Attributes.DownloadAuth
 
             if (string.IsNullOrEmpty(fileId))
             {
-                var response = new DefaultResponse();
+                var response = new BaseResponse();
 
                 response.AddError(new ErrorMessage("File ID not found in token", 401));
                 
